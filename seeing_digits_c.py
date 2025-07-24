@@ -5,7 +5,7 @@ import struct
 from array import array
 from os.path import join
 
-input_path = '/Users/mihirtare/Documents/racecar/racecar-neo-installer/racecar-student/homework/mnist_data' # find directory for images
+input_path = '../mnist_data' # find directory for images
 
 # gather training and testing images for mnist
 training_images_filepath = join(input_path, 'train-images-idx3-ubyte/train-images-idx3-ubyte')
