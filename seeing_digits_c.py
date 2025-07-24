@@ -5,7 +5,7 @@ import struct
 from array import array
 from os.path import join
 
-input_path = '../mnist_data' # find directory for images
+input_path = '/Users/mihirtare/Documents/racecar/racecar-neo-installer/racecar-student/homework/mnist_data' # find directory for images
 
 # gather training and testing images for mnist
 training_images_filepath = join(input_path, 'train-images-idx3-ubyte/train-images-idx3-ubyte')
@@ -179,10 +179,10 @@ class NeuralNetwork:
                 # calculated classification [0-9] with the training array (where one number has value of 1 and the rest have 0)
                 accuracies.append(accuracy)
                 
-                # Backward pass
+                # backpropagate 
                 self.backward(y, learning_rate)
                 
-                # Fix: Show progress every 50 epochs
+                # Show progress every 50 epochs
                 if verbose and epoch % 50 == 0:
                     print(f"Epoch {epoch:4d}, Loss: {loss:.4f}, Accuracy: {accuracy:.4f}")
             
@@ -193,8 +193,8 @@ class NeuralNetwork:
         # mse = np.mean((y_pred - y_true) ** 2)
         # return mse
 
+        #use cross-entropy to calculate error
         m = y_true.shape[0]
-        # Add small epsilon to prevent log(0)
         epsilon = 1e-15
         y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
         loss = -np.sum(y_true * np.log(y_pred)) / m
@@ -206,19 +206,28 @@ def create_goal(labels, num_classes=10):
     return goal
 
 # Display predictions for some test images based on the model (call after the training)
-def show_predictions(model, x_test, y_test, num=10):
-    predictions = model.forward(x_test[:num])
-    predicted_labels = np.argmax(predictions, axis=1)
+def show_predictions(model, images, true_labels=None, num=10):
+    predictions = model.forward(images) # use the weights/biases that were trained to run a forward pass for the testing images
+    predicted_labels = np.argmax(predictions, axis=1)  
+    accuracy = np.mean(predicted_labels == true_labels)
+    print(f"Accuracy during testing: {accuracy}") # calculate accuracy for the images we test on 
 
+
+    # make a plot to display the predictions for testing images (only first 20)
     plt.figure(figsize=(15, 3))
-    for i in range(num):
+    for i in range(min(num, len(images))):
         plt.subplot(1, num, i+1)
-        image = x_test[i].reshape(28, 28)
-        true_label = y_test[i]
+        image = images[i].reshape(28, 28)
         pred_label = predicted_labels[i]
-        color = 'green' if true_label == pred_label else 'red'
+        if true_labels is not None:
+            true_label = true_labels[i]
+            color = 'green' if pred_label == true_label else 'red'
+            title = f"Pred: {pred_label}\nTrue: {true_label}"
+        else:
+            color = 'blue'
+            title = f"Pred: {pred_label}"
         plt.imshow(image, cmap='gray')
-        plt.title(f"Pred: {pred_label}\nTrue: {true_label}", color=color)
+        plt.title(title, color=color)
         plt.axis('off')
     plt.tight_layout()
     plt.show()
@@ -251,8 +260,8 @@ X_test = X_test.reshape(-1, 784)
 y_train_goal = create_goal(y_train) # expected outcomes
 y_test_goal = create_goal(y_test)
 
-X_batch = X_train[:1000]  # first 100 images
-Y_batch = y_train_goal[:1000]
+X_batch = X_train[:6000]  # first 1000 images
+Y_batch = y_train_goal[:6000]
 # Train the network
 print("Training network...")
 losses, accuracies = nn.train(X_batch, Y_batch, epochs=1000, learning_rate=0.25, verbose=True) # run training algorithm (param: inputs, expected, epochs, learning rate)
@@ -268,9 +277,7 @@ plt.ylabel('Mean Square Error')
 plt.grid(True)
 
 # Final prediction
-y_pred = nn.forward(X_test[:1000])
-#accuracy = np.mean(np.argmax(y_pred, axis=1) == y_test[:1000])
-print(f"Accuracy: {accuracies[-1]:.4f}")
+print(f"Accuracy post training: {accuracies[-1]:.4f}")
 plt.figure(figsize=(12, 5))
 
 # Plot loss
@@ -291,7 +298,8 @@ plt.grid(True)
 
 plt.tight_layout()
 
-show_predictions(nn, X_test, y_test, num = 20) # predict using the prediction procedure
+show_predictions(nn, X_test[6000:7000], y_test[6000:7000], num = 20) # predict using the prediction procedure
+
 
 
 plt.show()
