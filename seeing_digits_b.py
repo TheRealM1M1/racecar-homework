@@ -1,0 +1,211 @@
+import numpy as np
+import math as math
+import matplotlib.pyplot as plt
+
+class NeuralNetwork:
+    def __init__(self, input_size=100, hidden_size=10, output_size=10):
+        # Initialize weights and biases to zero as required
+        self.W1 = np.zeros((input_size, hidden_size))  # Input to hidden1
+        self.W2 = np.zeros((hidden_size, hidden_size))  # Hidden1 to Hidden2
+        self.W3 = np.zeros((hidden_size, hidden_size))  # Hidden2 to hidden3
+        self.W4 = np.zeros((hidden_size, output_size))  # Hidden2 to output
+        
+        # Initialize biases as zero vectors
+        self.b1 = np.zeros((1, hidden_size))
+        self.b2 = np.zeros((1, hidden_size))
+        self.b3 = np.zeros((1, hidden_size))
+        self.b4 = np.zeros((1, output_size))
+        
+        # Store layer sizes
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        
+        # We'll store intermediate values for inspection
+        self.z1 = None  # Hidden1 before activation
+        self.a1 = None  # Hidden1 after activation  
+        self.z2 = None  # Hidden2 before activation
+        self.a2 = None  # Hidden2 after activation
+        self.z3 = None  # Hidden3 before activation
+        self.a3 = None  # Hidden3 after activation (final predictions)
+        self.z4 = None  # Output before activation
+        self.a4 = None  # Output after activation (final predictions)
+    
+    def relu(self, x): #ReLU activation to make values 0 if negative
+        return np.maximum(0, x)
+    
+    def relu_derivative(self, x):
+        return (x > 0).astype(float)
+    
+    def softmax(self, x):
+        exp_x = np.exp(x - np.max(x, axis=1, keepdims=True))
+        return exp_x / np.sum(exp_x, axis=1, keepdims=True)
+    
+    def forward(self, X): # forward pass function to take inputs and apply weights through all layers
+        self.X = X
+        # Step 1: Input to Hidden Layer 1
+        self.z1 = X @ self.W1 + self.b1 # calculate values for the first hidden layer based on inputs and weight/bias matrices
+        
+        # Apply ReLU activation to clip negatives
+        self.a1 = self.relu(self.z1) 
+        
+        # Step 2: Hidden Layer 1 to Hidden Layer 2 
+        self.z2 = self.a1 @ self.W2 + self.b2 # calculate values for the Hidden2 layer based on values from Hidden1
+        
+        
+        # Apply ReLU activation 
+        self.a2 = self.relu(self.z2)
+
+        # Step 3: Hidden Layer 2 to Output Layer
+        self.z3 = self.a2 @ self.W3 + self.b3 # calculate values for the Hidden3 layer based on values from Hidden2
+
+        # Apply ReLU activation
+        self.a3 = self.relu(self.z3)
+
+        # Step 4: Output Layer to Final Output
+        self.z4 = self.a3 @ self.W4 + self.b4 # calculate values for the Ouput layer based on values from Hidden3
+
+        # Apply Softmax activation
+        self.a4 = self.softmax(self.z4)
+        
+        return self.a4 
+    
+    def backward(self, y_true, learning_rate=0.01): # Backpropagation for the network
+            m = self.X.shape[0]  # batch size
+            
+            # Output layer gradients (Layer 4)
+            
+            dz4 = self.a4 - y_true # gradient of MSE loss with respect to the final output
+            dW4 = (1/m) * self.a3.T @ dz4 
+            db4 = (1/m) * np.sum(dz4, axis=0, keepdims=True)
+            
+            # Hidden layer 3 gradients
+            da3 = dz4 @ self.W4.T # chain rule
+            dz3 = da3 * self.relu_derivative(self.z3) # more chain rule
+            dW3 = (1/m) * self.a2.T @ dz3
+            db3 = (1/m) * np.sum(dz3, axis=0, keepdims=True)
+            
+            # Hidden layer 2 gradients
+            da2 = dz3 @ self.W3.T
+            dz2 = da2 * self.relu_derivative(self.z2)
+            dW2 = (1/m) * self.a1.T @ dz2
+            db2 = (1/m) * np.sum(dz2, axis=0, keepdims=True)
+            
+            # Hidden layer 1 gradients
+            da1 = dz2 @ self.W2.T
+            dz1 = da1 * self.relu_derivative(self.z1)
+            dW1 = (1/m) * self.X.T @ dz1
+            db1 = (1/m) * np.sum(dz1, axis=0, keepdims=True)
+            
+            # Update parameters
+            self.W4 -= learning_rate * dW4
+            self.b4 -= learning_rate * db4
+            self.W3 -= learning_rate * dW3
+            self.b3 -= learning_rate * db3
+            self.W2 -= learning_rate * dW2
+            self.b2 -= learning_rate * db2
+            self.W1 -= learning_rate * dW1
+            self.b1 -= learning_rate * db1
+
+    def train(self, X, y, epochs=500, learning_rate=0.01, verbose=True): # run epochs and train network
+            losses = [] # list for losses after each epoch
+            accuracies = [] # list for accuracy of model after each epoch
+            
+            # Reshape the inputs
+            if X.ndim == 1:
+                X = X.reshape(1, -1)  # Make it (1, 100)
+            
+            for epoch in range(epochs):
+                # Forward pass
+                y_pred = self.forward(X)
+                
+                # Compute loss
+                loss = self.compute_loss(y, y_pred)
+                losses.append(loss)
+                
+                # Compute accuracy
+                accuracy = np.mean(np.argmax(y_pred, axis=1) == np.argmax(y, axis=1)) # calculates accuracy by comparing the array of 
+                # calculated classification [0-9] with the training array (where one number has value of 1 and the rest have 0)
+                accuracies.append(accuracy)
+                
+                # Backward pass
+                self.backward(y, learning_rate)
+                
+                # Fix: Show progress every 50 epochs
+                if verbose and epoch % 50 == 0:
+                    print(f"Epoch {epoch:4d}, Loss: {loss:.4f}, Accuracy: {accuracy:.4f}")
+            
+            return losses, accuracies
+    
+    def compute_loss(self, y_true, y_pred):
+        # Calculate Mean Squared Error loss
+        mse = np.mean((y_pred - y_true) ** 2)
+        return mse
+    
+def create_goal(labels, num_classes=10):
+    goal = np.zeros((len(labels), num_classes)) # determines the goal (training data set) for all the 10 classes (should have 0 for every number except 2)
+    goal[np.arange(len(labels)), labels] = 1 # make the value at the correct number 1 so that that is the goal
+    return goal
+
+# Create image
+image = np.array([
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 255, 255, 255, 255, 255, 0, 0, 0],
+    [0, 0, 255, 255, 255, 255, 255, 0, 0, 0],
+    [0, 0, 0, 0, 0, 255, 255, 0, 0, 0],
+    [0, 0, 255, 255, 255, 255, 255, 0, 0, 0],
+    [0, 0, 255, 255, 255, 255, 255, 0, 0, 0],
+    [0, 0, 255, 255, 0, 0, 0, 0, 0, 0],
+    [0, 0, 255, 255, 255, 255, 255, 0, 0, 0],
+    [0, 0, 255, 255, 255, 255, 255, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+])
+
+# Initialize network
+nn = NeuralNetwork(input_size=100, hidden_size=10, output_size=10)
+
+# flattemn the image and pick the sample label (the expected value)
+flattened_image = image.flatten()
+sample_label = 2
+
+X_train = flattened_image / 255.0  # Normalize pixel values
+y_train = create_goal([sample_label], 10)
+
+# Train the network
+print("Training network...")
+losses, accuracies = nn.train(X_train, y_train, epochs=1000, learning_rate=0.001, verbose=True)
+
+# Create plots
+plt.figure(figsize=(12, 4))
+    
+plt.subplot(1, 3, 1)
+plt.imshow(image, cmap='gray')
+plt.title('Sample 10x10 Image')
+plt.colorbar()
+
+# Plot training loss
+plt.subplot(1, 3, 2)
+plt.plot(losses)
+plt.title('Training Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Mean Square Error')
+plt.grid(True)
+
+# Final prediction
+final_pred = nn.forward(X_train.reshape(1, -1))
+print(f"\nFinal predicted probabilities: {final_pred[0]}")
+print(f"Final predicted digit: {np.argmax(final_pred[0])}")
+print(f"True label: {sample_label}")
+print(f"Accuracy: {accuracies[-1]:.4f}")
+
+# Visualize predictions
+plt.subplot(1, 3, 3)
+plt.bar(range(10), final_pred[0])
+plt.title('Final Prediction Probabilities')
+plt.xlabel('Digit')
+plt.ylabel('Probability')
+plt.xticks(range(10))
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
