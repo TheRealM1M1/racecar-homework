@@ -5,15 +5,16 @@ import struct
 from array import array
 from os.path import join
 
-input_path = '../mnist_data'
+input_path = '../mnist_data' # find directory for images
 
+# gather training and testing images for mnist
 training_images_filepath = join(input_path, 'train-images-idx3-ubyte/train-images-idx3-ubyte')
 training_labels_filepath = join(input_path, 'train-labels-idx1-ubyte/train-labels-idx1-ubyte')
 test_images_filepath = join(input_path, 't10k-images-idx3-ubyte/t10k-images-idx3-ubyte')
 test_labels_filepath = join(input_path, 't10k-labels-idx1-ubyte/t10k-labels-idx1-ubyte')
 
 
-
+# class for mnist data (https://www.kaggle.com/code/hojjatk/read-mnist-dataset)
 class MnistDataloader(object):
     def __init__(self, training_images_filepath,training_labels_filepath,
                  test_images_filepath, test_labels_filepath):
@@ -50,8 +51,10 @@ class MnistDataloader(object):
         x_test, y_test = self.read_images_labels(self.test_images_filepath, self.test_labels_filepath)
         return (x_train, y_train),(x_test, y_test)  
 
+# Neural Network class 
 class NeuralNetwork:
     def __init__(self, input_size=784, hidden_size=10, output_size=10):
+        """ Initialize with an input layer of 784, 3 hidden layers with size 10, and output layer with size 10"""
         # Initialize weights and biases to zero as required
         self.W1 = np.zeros((input_size, hidden_size))  # Input to hidden1
         self.W2 = np.zeros((hidden_size, hidden_size))  # Hidden1 to Hidden2
@@ -195,6 +198,7 @@ def create_goal(labels, num_classes=10):
     goal[np.arange(len(labels)), labels] = 1 # make the value at the correct number 1 so that that is the goal
     return goal
 
+# Display predictions for some test images based on the model (call after the training)
 def show_predictions(model, x_test, y_test, num=10):
     predictions = model.forward(x_test[:num])
     predicted_labels = np.argmax(predictions, axis=1)
