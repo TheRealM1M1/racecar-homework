@@ -53,13 +53,13 @@ class MnistDataloader(object):
 
 # Neural Network class 
 class NeuralNetwork:
-    def __init__(self, input_size=784, hidden_size=10, output_size=10):
+    def __init__(self, input_size=784, hidden_size=64, output_size=10):
         """ Initialize with an input layer of 784, 3 hidden layers with size 10, and output layer with size 10"""
-        # Initialize weights and biases to zero as required
-        self.W1 = np.zeros((input_size, hidden_size))  # Input to hidden1
-        self.W2 = np.zeros((hidden_size, hidden_size))  # Hidden1 to Hidden2
-        self.W3 = np.zeros((hidden_size, hidden_size))  # Hidden2 to hidden3
-        self.W4 = np.zeros((hidden_size, output_size))  # Hidden2 to output
+        # Initialize weights and biases to random initial values
+        self.W1 = np.random.randn(input_size, hidden_size) * 0.01
+        self.W2 = np.random.randn(hidden_size, hidden_size) * 0.01
+        self.W3 = np.random.randn(hidden_size, hidden_size) * 0.01
+        self.W4 = np.random.randn(hidden_size, output_size) * 0.01
         
         # Initialize biases as zero vectors
         self.b1 = np.zeros((1, hidden_size))
@@ -190,8 +190,15 @@ class NeuralNetwork:
     
     def compute_loss(self, y_true, y_pred):
         # Calculate Mean Squared Error loss
-        mse = np.mean((y_pred - y_true) ** 2)
-        return mse
+        # mse = np.mean((y_pred - y_true) ** 2)
+        # return mse
+
+        m = y_true.shape[0]
+        # Add small epsilon to prevent log(0)
+        epsilon = 1e-15
+        y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+        loss = -np.sum(y_true * np.log(y_pred)) / m
+        return loss
     
 def create_goal(labels, num_classes=10):
     goal = np.zeros((len(labels), num_classes)) # determines the goal (training data set) for all the 10 classes (should have 0 for every number except 2)
@@ -218,7 +225,7 @@ def show_predictions(model, x_test, y_test, num=10):
 
 
 # Initialize network
-nn = NeuralNetwork(input_size=784, hidden_size=10, output_size=10)
+nn = NeuralNetwork(input_size=784, hidden_size=128, output_size=10)
 
 mnist_dataloader = MnistDataloader(
     training_images_filepath,
@@ -237,17 +244,18 @@ x_test = np.array(x_test)
 X_train = x_train / 255.0
 X_test = x_test / 255.0
 
-X_train = X_train.reshape(-1, 784)
+# reshaping input data
+X_train = X_train.reshape(-1, 784) 
 X_test = X_test.reshape(-1, 784)
 
-y_train_goal = create_goal(y_train)
+y_train_goal = create_goal(y_train) # expected outcomes
 y_test_goal = create_goal(y_test)
 
-X_batch = X_train[:100]  # first 100 images
-Y_batch = y_train_goal[:100]
+X_batch = X_train[:1000]  # first 100 images
+Y_batch = y_train_goal[:1000]
 # Train the network
 print("Training network...")
-losses, accuracies = nn.train(X_batch, Y_batch, epochs=1000, learning_rate=0.01, verbose=True)
+losses, accuracies = nn.train(X_batch, Y_batch, epochs=1000, learning_rate=0.25, verbose=True) # run training algorithm (param: inputs, expected, epochs, learning rate)
 
 
 
@@ -261,8 +269,8 @@ plt.grid(True)
 
 # Final prediction
 y_pred = nn.forward(X_test[:1000])
-accuracy = np.mean(np.argmax(y_pred, axis=1) == y_test[:1000])
-print(f"Test Accuracy: {accuracy:.4f}")
+#accuracy = np.mean(np.argmax(y_pred, axis=1) == y_test[:1000])
+print(f"Accuracy: {accuracies[-1]:.4f}")
 plt.figure(figsize=(12, 5))
 
 # Plot loss
@@ -283,7 +291,7 @@ plt.grid(True)
 
 plt.tight_layout()
 
-show_predictions(nn, X_test, y_test, num = 10) # predict
+show_predictions(nn, X_test, y_test, num = 20) # predict using the prediction procedure
 
 
 plt.show()
